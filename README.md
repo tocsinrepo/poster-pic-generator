@@ -57,7 +57,19 @@ Built after a July 2026 poster job where an AI image generator kept mangling a r
 4. Click **Run Face Swap**.
 5. Download the result.
 
+## Turning the finished still into a short video (proven recipe, 2026-07-05)
+
+Once you have a still image you're happy with (face-swapped or not), animating it worked well using **Higgsfield's `kling3_0_turbo` model** with the finished image as the `start_image` reference, rather than any local tool:
+
+- Model: `kling3_0_turbo`
+- Input: the approved still image as `start_image`
+- Duration: 5s, 720p was plenty for a personal clip
+- Prompt style that worked: describe the action/emotion plainly, e.g. `"The two girls celebrate their birthday together — smiling but not laughing, waving, confetti and fireworks bursting behind them, playful joyful energy, subtle natural movement"`
+- Cost: ~7.5 credits (~$0.75) per 5s clip at time of writing
+
+Iterating on tone is cheap -- e.g. swapping "laughing" for "smiling but not laughing" to dial down the expression took one regeneration. This step isn't part of this repo's code (it's a direct Higgsfield MCP call, not something FaceFusion does), but documenting it here since it's the natural next step after a face swap and was confirmed working end-to-end on the twins' birthday poster.
+
 ## Notes
 
 - This app is deliberately simple (source + target + run). FaceFusion supports a lot more (video, multiple processors, face enhancement, etc.) via its own CLI -- see `facefusion/facefusion.py --help` inside the cloned folder if you want to go further.
-- No cloud credits are spent running this -- it's all local compute on your machine.
+- No cloud credits are spent running the face-swap app itself -- it's all local compute on your machine. The video-animation step above does use Higgsfield credits.
