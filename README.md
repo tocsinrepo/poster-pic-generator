@@ -57,9 +57,27 @@ Built after a July 2026 poster job where an AI image generator kept mangling a r
 4. Click **Run Face Swap**.
 5. Download the result.
 
+## Optional: connect your own Higgsfield account (for the animate step)
+
+This repo is **public**, so no one's personal API key is ever written into the code or committed to GitHub. Instead, each person who wants the "animate the result into a video" feature supplies their own Higgsfield credentials locally, in a file that Git is configured to ignore.
+
+**Setup:**
+
+1. Get an API key from [cloud.higgsfield.ai](https://cloud.higgsfield.ai/) (account/API settings).
+2. In your local copy of this repo, copy the example env file:
+   ```
+   cp .env.example .env
+   ```
+3. Open `.env` in a text editor and paste in your real key (either the single-key format or the key+secret format -- instructions are in the file).
+4. Save it. **Do not** rename it to anything else, and never run `git add .env` -- it's already excluded via `.gitignore`, so a normal `git add .` / `git commit` won't pick it up.
+5. Restart the app (`streamlit run app.py`). If your key is detected, an "Animate the result" section appears below the face-swap tool after you run a swap.
+6. The model ID field is left blank on purpose -- check your [Higgsfield Cloud dashboard](https://cloud.higgsfield.ai/) for the current image-to-video model name and paste it in, since exact model catalog names can change over time.
+
+**Why it's built this way:** if a personal key were hardcoded into `app.py` and pushed to this public repo, anyone browsing GitHub could copy it and spend that person's Higgsfield credits. Keeping it in a local, git-ignored `.env` file means the code stays generic and safe to share, while each person's account stays private on their own machine.
+
 ## Turning the finished still into a short video (proven recipe, 2026-07-05)
 
-Once you have a still image you're happy with (face-swapped or not), animating it worked well using **Higgsfield's `kling3_0_turbo` model** with the finished image as the `start_image` reference, rather than any local tool:
+Once you have a still image you're happy with (face-swapped or not), animating it worked well using **Higgsfield's `kling3_0_turbo` model** with the finished image as the `start_image` reference:
 
 - Model: `kling3_0_turbo`
 - Input: the approved still image as `start_image`
@@ -67,9 +85,9 @@ Once you have a still image you're happy with (face-swapped or not), animating i
 - Prompt style that worked: describe the action/emotion plainly, e.g. `"The two girls celebrate their birthday together — smiling but not laughing, waving, confetti and fireworks bursting behind them, playful joyful energy, subtle natural movement"`
 - Cost: ~7.5 credits (~$0.75) per 5s clip at time of writing
 
-Iterating on tone is cheap -- e.g. swapping "laughing" for "smiling but not laughing" to dial down the expression took one regeneration. This step isn't part of this repo's code (it's a direct Higgsfield MCP call, not something FaceFusion does), but documenting it here since it's the natural next step after a face swap and was confirmed working end-to-end on the twins' birthday poster.
+Iterating on tone is cheap -- e.g. swapping "laughing" for "smiling but not laughing" to dial down the expression took one regeneration. That specific recipe was run through Higgsfield's MCP tool interface (not this app); the "Optional: connect your own Higgsfield account" section above is what lets this app itself do a similar animate step via the public Higgsfield Cloud API instead.
 
 ## Notes
 
-- This app is deliberately simple (source + target + run). FaceFusion supports a lot more (video, multiple processors, face enhancement, etc.) via its own CLI -- see `facefusion/facefusion.py --help` inside the cloned folder if you want to go further.
-- No cloud credits are spent running the face-swap app itself -- it's all local compute on your machine. The video-animation step above does use Higgsfield credits.
+- This app is deliberately simple (source + target + run + optional animate). FaceFusion supports a lot more (video, multiple processors, face enhancement, etc.) via its own CLI -- see `facefusion/facefusion.py --help` inside the cloned folder if you want to go further.
+- No cloud credits are spent running the face-swap step -- it's all local compute on your machine. The optional animate step uses your own Higgsfield credits, at whatever rate your account is billed.
