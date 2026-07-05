@@ -1,0 +1,4 @@
+# Debian/Ubuntu system packages needed by opencv-python on minimal images
+# (Streamlit Community Cloud reads this file automatically at build time).
+libgl1
+libglib2.0-0

@@ -1,7 +1,19 @@
 streamlit>=1.38
+
+# FaceFusion's own core runtime dependencies, declared here so Streamlit
+# Community Cloud (and any other host that only installs from this file at
+# build time) actually has them available. FaceFusion itself gets cloned as
+# source code at runtime (see app.py), but its Python dependencies must be
+# installed up front -- there's no interactive terminal on Streamlit Cloud to
+# run a second `pip install` after the fact.
+numpy
+onnx
+onnxruntime
+opencv-python-headless
+tqdm
+scipy
+
 # Optional, for the Higgsfield Cloud animate step -- safe to leave installed
 # even if you never set credentials; the app just won't show that section.
 higgsfield-client
 python-dotenv
-# FaceFusion's own dependencies are installed separately -- see README.
-# (They live in the facefusion/requirements.txt that gets cloned on first run.)
