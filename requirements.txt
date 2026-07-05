@@ -1,0 +1,3 @@
+streamlit>=1.38
+# FaceFusion's own dependencies are installed separately -- see README.
+# (They live in the facefusion/requirements.txt that gets cloned on first run.)
