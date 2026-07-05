@@ -1,9 +1,18 @@
 """
 Poster Pic Generator -- Streamlit UI wrapping FaceFusion for real (deterministic)
-face swapping. Point it at a source photo (real faces) and a target image
-(a poster, thumbnail, generated scene, whatever) and it composites the real
-face(s) onto the target using FaceFusion's face-swap models -- not an AI
-re-draw, so no hallucinated eyes/hands/positions.
+face swapping, with an optional second step to animate the result using your
+own Higgsfield Cloud account.
+
+Step 1 (always available, fully local): point it at a source photo (real
+faces) and a target image (a poster, thumbnail, generated scene, whatever)
+and it composites the real face(s) onto the target using FaceFusion's
+face-swap models -- not an AI re-draw, so no hallucinated eyes/hands/positions.
+
+Step 2 (optional, needs your own Higgsfield API key): animate the finished
+still into a short video via the official Higgsfield Cloud API. This only
+unlocks if you've set your own credentials in a local `.env` file -- see
+README.md. This repo is public, so no key is ever hardcoded or committed;
+each person who runs this app supplies their own.
 
 Run locally (needs real internet access to download FaceFusion's models on
 first run -- this will NOT work inside a network-locked-down sandbox):
@@ -12,6 +21,7 @@ first run -- this will NOT work inside a network-locked-down sandbox):
     streamlit run app.py
 """
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -19,9 +29,31 @@ from pathlib import Path
 
 import streamlit as st
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # loads a local .env file if present -- this file is git-ignored, never committed
+except ImportError:
+    pass
+
+try:
+    import higgsfield_client
+    HIGGSFIELD_CLIENT_AVAILABLE = True
+except ImportError:
+    HIGGSFIELD_CLIENT_AVAILABLE = False
+
 APP_DIR = Path(__file__).resolve().parent
 FACEFUSION_DIR = APP_DIR / "facefusion"
 FACEFUSION_REPO_URL = "https://github.com/facefusion/facefusion.git"
+
+
+def higgsfield_credentials_configured() -> bool:
+    """True if the user has put their OWN Higgsfield credentials in the environment
+    (normally via a local, git-ignored .env file -- never hardcoded here)."""
+    if os.environ.get("HF_KEY"):
+        return True
+    if os.environ.get("HF_API_KEY") and os.environ.get("HF_API_SECRET"):
+        return True
+    return False
 
 
 def ensure_facefusion_cloned() -> None:
@@ -79,6 +111,32 @@ def run_face_swap(source_path: Path, target_path: Path, output_path: Path, face_
     return subprocess.run(cmd, cwd=str(FACEFUSION_DIR), capture_output=True, text=True)
 
 
+def animate_with_higgsfield_cloud(image_path: Path, prompt: str, model_id: str) -> str:
+    """
+    Upload the finished still and animate it via the Higgsfield Cloud API,
+    using whatever credentials the user has set locally (HF_KEY, or
+    HF_API_KEY + HF_API_SECRET). Returns the resulting video URL.
+
+    model_id is left user-editable in the UI rather than hardcoded here --
+    check https://cloud.higgsfield.ai for the current model catalog name for
+    image-to-video, since exact IDs can change.
+    """
+    image_url = higgsfield_client.upload_file(str(image_path))
+    result = higgsfield_client.subscribe(
+        model_id,
+        arguments={
+            "prompt": prompt,
+            "image_url": image_url,
+        },
+    )
+    # Response shape varies by model -- try the common spots.
+    if "video" in result and isinstance(result["video"], dict):
+        return result["video"].get("url", "")
+    if "videos" in result and result["videos"]:
+        return result["videos"][0].get("url", "")
+    return str(result)
+
+
 st.set_page_config(page_title="Poster Pic Generator", page_icon="\U0001F3AD")
 st.title("\U0001F3AD Poster Pic Generator")
 st.caption(
@@ -122,13 +180,52 @@ if run:
 
         if result.returncode == 0 and out_path.exists():
             st.success("Done")
-            st.image(str(out_path), caption="Result", use_container_width=True)
+            result_bytes = out_path.read_bytes()
+            st.session_state["last_result_bytes"] = result_bytes
+            st.image(result_bytes, caption="Result", use_container_width=True)
             st.download_button(
                 "Download result",
-                data=out_path.read_bytes(),
+                data=result_bytes,
                 file_name="face_swap_result.png",
                 mime="image/png",
             )
         else:
             st.error("FaceFusion did not produce an output. See the log below.")
             st.code((result.stdout or "") + "\n" + (result.stderr or ""))
+
+st.divider()
+st.subheader("Optional: animate the result (Higgsfield Cloud)")
+
+if not HIGGSFIELD_CLIENT_AVAILABLE:
+    st.info(
+        "Not installed. Run `pip install higgsfield-client python-dotenv` to unlock this step."
+    )
+elif not higgsfield_credentials_configured():
+    st.info(
+        "No Higgsfield credentials found. This is optional and uses **your own** account "
+        "-- see the README section 'Optional: connect your own Higgsfield account' for how "
+        "to set this up locally. Nothing here is shared or committed to the repo."
+    )
+elif "last_result_bytes" not in st.session_state:
+    st.caption("Run a face swap above first, then you can animate the result here.")
+else:
+    animate_prompt = st.text_area(
+        "Describe the motion/action",
+        value="The people in the image celebrate together -- smiling, waving, playful joyful energy, subtle natural movement",
+    )
+    model_id = st.text_input(
+        "Higgsfield Cloud model ID (check cloud.higgsfield.ai for the current image-to-video model name)",
+        value="",
+        placeholder="e.g. a model id from your Higgsfield Cloud catalog",
+    )
+    if st.button("Animate with my Higgsfield account", disabled=not model_id):
+        with tempfile.TemporaryDirectory() as tmp:
+            still_path = Path(tmp) / "still.png"
+            still_path.write_bytes(st.session_state["last_result_bytes"])
+            with st.spinner("Submitting to Higgsfield Cloud and waiting for the video..."):
+                try:
+                    video_url = animate_with_higgsfield_cloud(still_path, animate_prompt, model_id)
+                    st.success("Done")
+                    st.video(video_url)
+                except Exception as exc:  # surface the real error rather than guessing
+                    st.error(f"Higgsfield Cloud request failed: {exc}")

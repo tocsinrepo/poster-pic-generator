@@ -1,3 +1,7 @@
 streamlit>=1.38
+# Optional, for the Higgsfield Cloud animate step -- safe to leave installed
+# even if you never set credentials; the app just won't show that section.
+higgsfield-client
+python-dotenv
 # FaceFusion's own dependencies are installed separately -- see README.
 # (They live in the facefusion/requirements.txt that gets cloned on first run.)
