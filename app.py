@@ -152,11 +152,11 @@ col1, col2 = st.columns(2)
 with col1:
     source_file = st.file_uploader("Source photo (real face(s) to use)", type=["jpg", "jpeg", "png"])
     if source_file:
-        st.image(source_file, caption="Source", use_container_width=True)
+        st.image(source_file, caption="Source", width="stretch")
 with col2:
     target_file = st.file_uploader("Target image (where the face(s) go)", type=["jpg", "jpeg", "png"])
     if target_file:
-        st.image(target_file, caption="Target", use_container_width=True)
+        st.image(target_file, caption="Target", width="stretch")
 
 face_order = st.selectbox(
     "Order faces appear in the SOURCE photo, left to right (matches them onto the target in the same order)",
@@ -182,7 +182,7 @@ if run:
             st.success("Done")
             result_bytes = out_path.read_bytes()
             st.session_state["last_result_bytes"] = result_bytes
-            st.image(result_bytes, caption="Result", use_container_width=True)
+            st.image(result_bytes, caption="Result", width="stretch")
             st.download_button(
                 "Download result",
                 data=result_bytes,
