@@ -8,13 +8,18 @@ This is a **real, deterministic face swap** -- it detects the actual face in you
 
 Built after a July 2026 poster job where an AI image generator kept mangling a real photo reference (Higgsfield / Nano Banana) -- swapping which twin was on which side, and misreading a hand gesture near an eye as an injury. FaceFusion actually detects and swaps the real face pixels, so it doesn't hallucinate.
 
-## Requirements
+## Two ways to run this
 
-- A Mac (or any computer) with normal internet access. **This will not work in a network-locked-down sandbox** -- FaceFusion needs to download its face-detection/face-swap models from GitHub and Hugging Face on first run.
-- Python 3.10 or newer.
-- `git` installed (comes with Xcode Command Line Tools on a Mac).
+### Option A: Streamlit Community Cloud (what's currently deployed)
 
-## Setup (step by step)
+If you deployed this repo directly via [share.streamlit.io](https://share.streamlit.io), Streamlit Cloud builds the app automatically from two files in this repo:
+
+- `requirements.txt` -- Python packages, including FaceFusion's own core dependencies (numpy, onnx, onnxruntime, opencv-python-headless, tqdm, scipy) so they're available even though FaceFusion's *code* gets cloned separately at runtime.
+- `packages.txt` -- system-level packages (`libgl1`, `libglib2.0-0`) that opencv needs on Streamlit Cloud's minimal Debian image.
+
+On the **first load after a deploy or restart**, expect it to take a few minutes: the app clones FaceFusion's source code into a `facefusion/` folder, and the first face swap you run downloads FaceFusion's model files. Subsequent runs (until the container restarts) are much faster. Free-tier Streamlit Cloud has limited RAM (1 GB) -- if you see the app crash/restart on a swap, it's likely hitting that ceiling.
+
+### Option B: Your own Mac (more headroom, no cold starts)
 
 1. Open **Terminal** on your Mac.
 2. Clone this repo and go into it:
@@ -36,18 +41,12 @@ Built after a July 2026 poster job where an AI image generator kept mangling a r
    streamlit run app.py
    ```
    Your browser will open automatically to a local page (something like `http://localhost:8501`).
-
-6. **The first time you click "Run Face Swap"**, two things happen automatically and will take a few minutes:
-   - FaceFusion itself gets cloned into a `facefusion/` folder next to the app.
-   - FaceFusion downloads its face-detection and face-swap model files the first time it needs them.
-
-   After that first run, everything is cached locally and future swaps are much faster.
-
-7. If FaceFusion's own dependencies aren't installed yet (you'll see an error mentioning a missing package like `onnxruntime` or `opencv`), run:
+6. **The first time you click "Run Face Swap"**, FaceFusion gets cloned into a `facefusion/` folder and downloads its model files -- this needs real internet access and will **not work inside a network-locked-down sandbox**.
+7. If you still see an error mentioning a missing package after that, run:
    ```
    pip install -r facefusion/requirements.txt
    ```
-   and try again.
+   and try again -- this covers anything FaceFusion added that isn't yet reflected in this repo's own `requirements.txt`.
 
 ## How to use it
 
@@ -73,7 +72,9 @@ This repo is **public**, so no one's personal API key is ever written into the c
 5. Restart the app (`streamlit run app.py`). If your key is detected, an "Animate the result" section appears below the face-swap tool after you run a swap.
 6. The model ID field is left blank on purpose -- check your [Higgsfield Cloud dashboard](https://cloud.higgsfield.ai/) for the current image-to-video model name and paste it in, since exact model catalog names can change over time.
 
-**Why it's built this way:** if a personal key were hardcoded into `app.py` and pushed to this public repo, anyone browsing GitHub could copy it and spend that person's Higgsfield credits. Keeping it in a local, git-ignored `.env` file means the code stays generic and safe to share, while each person's account stays private on their own machine.
+If you're running this on **Streamlit Community Cloud** instead of locally, set these same variables (`HF_KEY` or `HF_API_KEY`/`HF_API_SECRET`) in the app's **Settings -> Secrets** in the Streamlit Cloud dashboard rather than a local `.env` file -- Streamlit Cloud injects secrets as environment variables the same way.
+
+**Why it's built this way:** if a personal key were hardcoded into `app.py` and pushed to this public repo, anyone browsing GitHub could copy it and spend that person's Higgsfield credits. Keeping it out of the code -- in a local `.env` file or in Streamlit Cloud's Secrets manager -- means the code stays generic and safe to share, while each person's account stays private.
 
 ## Turning the finished still into a short video (proven recipe, 2026-07-05)
 
@@ -90,4 +91,4 @@ Iterating on tone is cheap -- e.g. swapping "laughing" for "smiling but not laug
 ## Notes
 
 - This app is deliberately simple (source + target + run + optional animate). FaceFusion supports a lot more (video, multiple processors, face enhancement, etc.) via its own CLI -- see `facefusion/facefusion.py --help` inside the cloned folder if you want to go further.
-- No cloud credits are spent running the face-swap step -- it's all local compute on your machine. The optional animate step uses your own Higgsfield credits, at whatever rate your account is billed.
+- No cloud credits are spent running the face-swap step -- it's all local compute. The optional animate step uses your own Higgsfield credits, at whatever rate your account is billed.
